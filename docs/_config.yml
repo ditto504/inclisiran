@@ -1,12 +1,1 @@
-name: "inclisiran"
-output_dir: "docs"
-navbar:
-  title: "inclisiran"
-  left:
-  - text: "Home"
-   href: index.html
-  - text: "inclisiran"
-   href: inclisiran.html
-output:
-  html_document:
-  theme: jekyll-theme-cayman
+theme: jekyll-theme-cayman
