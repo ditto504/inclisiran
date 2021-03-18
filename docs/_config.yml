@@ -1,1 +1,8 @@
 theme: jekyll-theme-cayman
+navbar:
+  title: "Inclisiran"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: "About"
+      href: about.html
