@@ -3,7 +3,9 @@ title: "inclisiran patient filter"
 author: "LI, Yuxi, MD"
 date: "2021/3/18"
 output:
-  output: github_document
+  github_document:
+    toc: true
+    toc_depth: 2
 ---
 
 ```{r setup, include=FALSE}
