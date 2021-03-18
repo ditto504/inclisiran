@@ -1,30 +1,264 @@
 ---
-title: "patient filtering"
-author: "Li Yuxi"
+title: "inclisiran patient filter"
+author: "LI, Yuxi, MD"
 date: "2021/3/18"
-output: html_document
+output:
+  output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+## 准备
+```{r warning=FALSE}
+library(tidyverse)
+#set date time style
+options(scipen = 50)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+## 患者队列筛选
+```{r message=FALSE, warning=FALSE}
+in_patient <- read_csv('data/in_patient.csv')
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+glimpse(in_patient)
+```
+
+```{r}
+head(in_patient)
+```
+
+
+## empi
+```{r message=FALSE, warning=FALSE}
+empi<-read_csv("data/empi.csv")
+```
+
+```{r}
+glimpse(empi)
+```
+
+```{r}
+head(empi)
+```
+
+```{r}
+tmp<-
+empi%>%
+  select(pid,empi)
+```
+
+### 末次住院
+```{r}
+final<-
+in_patient%>%
+  left_join(tmp,by=c("pid"))%>%
+  filter(!is.na(empi))%>%
+  arrange(pid,desc(in_datetime))%>%
+  distinct(empi,.keep_all = TRUE)%>%
+  select(-X1)
+```
+
+### 时间跨度
+```{r}
+summary(final$in_datetime)
+```
+
+## 末次化验
+```{r}
+lis_sample_in <- read_csv("data/lis_sample.csv")
+```
+
+```{r}
+lis_sample_in <- select(lis_sample_in, -X1)
+```
+
+```{r}
+glimpse(lis_sample_in)
+```
+
+```{r}
+head(lis_sample_in)
+```
+
+```{r message=FALSE, warning=FALSE}
+lis_result_in <- read_csv("data/lis_result.csv")
+```
+
+```{r}
+glimpse(lis_result_in)
+```
+
+```{r}
+head(lis_result_in)
+```
+
+
+```{r}
+lis_result_in%>%
+  #filter(str_detect(tolower(ENGLISH_NAME),"ldl"))%>%
+  filter(str_detect(CHINESE_NAME,"低密度"))%>%
+  group_by(ENGLISH_NAME,CHINESE_NAME)%>%
+  summarise(n=n())
+```
+
+```{r}
+tmp<-
+lis_sample_in%>%
+  filter(!is.na(empi))%>%
+  semi_join(final,by=c("empi"))
+```
+
+```{r}
+tmp<-
+lis_result_in%>%
+  filter(ENGLISH_NAME %in% c("LDL-C"))%>%
+  left_join(tmp, by="sid")%>%
+  select(empi,ENGLISH_NAME,QUANTITATIVE_RESULT,sampling_time)%>%
+  filter(!is.na(empi))
+```
+
+```{r}
+tmp<-
+tmp%>%
+  arrange(empi,sampling_time)%>%
+  group_by(empi)%>%
+  summarise(
+    last_ldl_time=last(sampling_time),
+    last_ldl=last(sampling_time)
+  )
+```
+
+### 缺失比例
+```{r}
+final%>%
+  left_join(tmp,by=c("empi"))%>%
+  summarise_all(list(function(x) sum(is.na(x))/length(x)))
+```
+
+### 更新final数据
+```{r}
+final<-
+final%>%
+  left_join(tmp,by=c("empi"))%>%
+  filter(!is.na(last_ldl))
+```
+
+## 筛选1
+```{r}
+glimpse(final)
+```
+
+```{r}
+#out<-
+final%>%
+  filter(last_ldl>1.8)%>%
+  arrange(desc(last_ldl_time,last_ldl))%>%
+  select(empi,pid,out_datetime,dept,last_ldl_time,last_ldl)%>%
+  mutate(followup=as.Date(last_ldl_time)-as.Date(out_datetime))%>%
+  filter(followup>0)%>%
+  arrange(desc(last_ldl_time))%>%
+  left_join(select(empi,empi,name,sex,birthday),by=c("empi"))%>%
+  mutate(age=round(as.numeric(difftime(as.Date(last_ldl_time),birthday,units="days"))/365.25))
+```
+
+### 导出
+```{r}
+#write.csv(out,"data/inclisiran/more20210316.csv")
+```
+
+## 出院带药降脂方案
+```{r message=FALSE, warning=FALSE}
+meds <- read_csv('data/meds.csv',trim_ws = TRUE)
+```
+
+```{r}
+glimpse(meds)
+```
+
+```{r}
+head(meds,20)
+```
+
+
+```{r}
+tmp<-
+meds%>%
+  filter(str_detect(tolower(ADVICE_CONTENT),"(他汀)"))%>%
+  arrange(pflow,med_time)%>%
+  mutate(statin_type=case_when(
+    str_detect(ADVICE_CONTENT,"阿托伐")~"阿托伐",
+    str_detect(ADVICE_CONTENT,"瑞舒伐")~"瑞舒伐",
+    str_detect(ADVICE_CONTENT,"普伐")~"普伐",
+    str_detect(ADVICE_CONTENT,"辛伐")~"辛伐",
+    str_detect(ADVICE_CONTENT,"氟伐")~"氟伐",
+    str_detect(ADVICE_CONTENT,"匹伐")~"匹伐"
+  ))%>%
+  group_by(pflow)%>%
+  summarise(
+    statin_type=last(statin_type),
+    dose=last(DOSAGE)
+  )%>%
+  ungroup()
+```
+
+```{r}
+tmp1<-
+meds%>%
+  filter(str_detect(tolower(ADVICE_CONTENT),"(依折麦布)"))%>%
+  select(pflow,med_time)%>%
+  mutate(emab=1)%>%
+  group_by(pflow)%>%
+  summarise(
+    emab=max(emab)
+  )%>%
+  ungroup()
+```
+### 缺失比例
+```{r}
+final%>%
+  left_join(tmp,by=c("pflow"))%>%
+  left_join(tmp1,by=c("pflow"))%>%
+  summarise_all(list(function(x) sum(is.na(x))/length(x)))
+```
+### 更新final数据
+```{r}
+final<-
+final%>%
+  left_join(tmp,by=c("pflow"))%>%
+  left_join(tmp1,by=c("pflow"))%>%
+  filter(!is.na(statin_type))
+```
+
+## 筛选2
+```{r}
+glimpse(final)
+```
+
+```{r}
+#out<-
+final%>%
+  #filter(!is.na(statin_type))%>%
+  mutate(max=case_when(
+    (statin_type=="阿托伐"&dose>=40)~"y",
+    (statin_type=="瑞舒伐"&dose>=20)~"y",
+    (statin_type=="辛伐"&dose>=20)~"y",
+    (statin_type=="匹伐"&dose>=4)~"y"
+  ))%>%
+  filter(last_ldl>1.8&max=="y")%>%
+  arrange(desc(last_ldl,last_ldl_time))%>%
+  select(empi,pid,out_datetime,dept,last_ldl_time,last_ldl,statin_type,dose,emab,max)%>%
+  mutate(followup=as.Date(last_ldl_time)-as.Date(out_datetime))%>%
+  filter(followup>0)%>%
+  arrange(desc(last_ldl_time))%>%
+  left_join(select(empi,empi,name,sex,birthday),by=c("empi"))%>%
+  mutate(age=round(as.numeric(difftime(as.Date(last_ldl_time),birthday,units="days"))/365.25))%>%
+  select(-birthday)
+```
+
+## 导出
+```{r}
+#write.csv(out,"data/inclisiran/out20210316.csv")
+```
