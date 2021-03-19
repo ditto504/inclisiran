@@ -5,27 +5,30 @@ LI, Yuxi, MD
 
 ## 准备
 
+在开始患者筛选之前，我们需要载入一些基础的R语言的包，用来进行数据清洗和处理。其中，tidyverse是一个系列包，里面包含了所有数据处理、数据表连接筛选的功能。
+
 ``` r
 library(tidyverse)
-```
-
-    ## ── Attaching packages ────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
-
-    ## ✓ ggplot2 3.3.0     ✓ purrr   0.3.3
-    ## ✓ tibble  2.1.3     ✓ dplyr   0.8.5
-    ## ✓ tidyr   1.0.2     ✓ stringr 1.4.0
-    ## ✓ readr   1.3.1     ✓ forcats 0.5.0
-
-    ## ── Conflicts ───────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-    ## x dplyr::filter() masks stats::filter()
-    ## x dplyr::lag()    masks stats::lag()
-
-``` r
 #set date time style
 options(scipen = 50)
 ```
 
 ## 患者队列筛选
+
+### 基本筛选思路
+
+客观的讲，ORION 18应该并不是一个入选很困难的研究。因为根据ORION
+18研究的入选和排除标准，只要符合ASCVD，且LDL-C≥1.8mmol/L，且服用稳定的（≥30天）可耐受最大剂量他汀（无论是否包括依折麦布）就可以入选。或是高危ASCVD，LDL-C≥2.6mmol/L。因此，很自然的，我们想到有两大类患者可以利用EHR数据精准筛选患者。
+
+1.  已经住院，确诊了ASCVD的患者，且在门诊随访中记录了LDL-C；
+
+2.  纯门诊，通过诊断与检验系统进行筛选、甚至实时监测；
+
+### 住院患者的筛选
+
+#### 数据准备
+
+首先，我们从`\data`里读入患者住院信息表；
 
 ``` r
 in_patient <- read_csv('data/in_patient.csv')
@@ -58,7 +61,7 @@ head(in_patient)
     ## 5     5 c35f2fda 3579fa0d 3703-10-20 14:29:42 3703-10-30 08:41:02 心内科二病房
     ## 6     6 46cfd386 15d5f41d 3720-04-23 14:48:00 3720-04-27 08:30:16 心内科一病房
 
-## empi
+然后，我们读取患者唯一识别码EMPI。
 
 ``` r
 empi<-read_csv("data/empi.csv")
@@ -97,7 +100,11 @@ empi%>%
   select(pid,empi)
 ```
 
-### 末次住院
+#### 末次住院
+
+接下来，我们要选取每一位患者的末次住院信息，作为基线信息。
+
+这里面，我们利用了`arrange`（排序）以及`distinct`（唯一）的算法，并得到我们希望的患者列表。
 
 ``` r
 final<-
@@ -109,7 +116,7 @@ in_patient%>%
   select(-X1)
 ```
 
-### 时间跨度
+我们来看一下患者的时间跨度
 
 ``` r
 summary(final$in_datetime)
@@ -120,22 +127,11 @@ summary(final$in_datetime)
     ##                  Mean               3rd Qu.                  Max. 
     ## "3501-04-13 13:10:28" "3716-04-09 13:48:15" "3936-07-15 10:38:00"
 
-## 末次化验
+#### 末次化验
 
 ``` r
 lis_sample_in <- read_csv("data/lis_sample.csv")
 ```
-
-    ## Warning: Missing column names filled in: 'X1' [1]
-
-    ## Parsed with column specification:
-    ## cols(
-    ##   X1 = col_double(),
-    ##   sid = col_character(),
-    ##   pflow = col_character(),
-    ##   sampling_time = col_datetime(format = ""),
-    ##   empi = col_character()
-    ## )
 
 ``` r
 lis_sample_in <- select(lis_sample_in, -X1)
