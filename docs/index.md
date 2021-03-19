@@ -6,6 +6,34 @@ Inclisiran以及ORION 18是正在开展的一项RCT研究。
 
 于是也有了这个Github项目。
 
+## 说明
+
+### 数据
+
+这个项目中所有的示例数据，都包含在```/data```文件夹里。这个文件夹包含四个数据表，即dataframe，具体内容及包含变量如下：
+
+- empi.csv
+
+即患者唯一识别码数据表，**empi**是住院或门诊等所有系统中该患者的唯一识别码。而其中**pid**是患者住院电子病历数据的唯一标识。**name**是患者姓名，**sex**是性别，**birthday**是患者的出生日期。
+
+**注意**：此处为了保护真实患者的隐私，此处提供的9例示例数据，虽然来源于真实EMR及我院心血管临床数据仓库，但已经对所有涉及隐私信息的数据进行了加密处理。尤其涉及到具体时间信息的数据，针对每个患者的所有数据库里涉及时间的变量，都进行了一个唯一随机数的时间漂移变量。这样做的好处，虽然我们无法根据某一次时间来定位该患者，但涉及到**年龄**这样的信息，我们依然可以利于**出生日期**与**当前时间**的时间差，来得到真实的年龄信息。这对于后续的数据分析是很有价值的。
+
+- in_patient.csv
+
+即患者住院信息表。其中**pflow**是此次入院的唯一标识，同一个患者，只会有唯一的**pid**与**empi**，但如果有多次住院，则会对应不同的**pflow**。
+
+**in_datetime**与**out_datetime**分别是入院和出院的时间，如上文所述，也进行了随机数的漂移处理。**dept**是患者科室信息。
+
+- lis_sample.csv
+
+即患者检验项目表，包含住院和门诊检验信息。
+
+- lis_result.csv
+
+- meds.csv
+
+
+
 
 You can use the [editor on GitHub](https://github.com/ditto504/inclisiran/edit/main/docs/index.md) to maintain and preview the content for your website in Markdown files.
 
