@@ -13,13 +13,30 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## 准备
-```{r warning=FALSE}
+
+在开始患者筛选之前，我们需要载入一些基础的R语言的包，用来进行数据清洗和处理。其中，tidyverse是一个系列包，里面包含了所有数据处理、数据表连接筛选的功能。
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 #set date time style
 options(scipen = 50)
 ```
 
 ## 患者队列筛选
+
+### 基本筛选思路
+
+客观的讲，ORION 18应该并不是一个入选很困难的研究。因为根据ORION 18研究的入选和排除标准，只要符合ASCVD，且LDL-C≥1.8mmol/L，且服用稳定的（≥30天）可耐受最大剂量他汀（无论是否包括依折麦布）就可以入选。或是高危ASCVD，LDL-C≥2.6mmol/L。因此，很自然的，我们想到有两大类患者可以利用EHR数据精准筛选患者。
+
+1. 已经住院，确诊了ASCVD的患者，且在门诊随访中记录了LDL-C；
+
+2. 纯门诊，通过诊断与检验系统进行筛选、甚至实时监测；
+
+### 住院患者的筛选
+
+#### 数据准备
+
+首先，我们从`\data`里读入患者住院信息表；
+
 ```{r message=FALSE, warning=FALSE}
 in_patient <- read_csv('data/in_patient.csv')
 ```
@@ -28,12 +45,12 @@ in_patient <- read_csv('data/in_patient.csv')
 glimpse(in_patient)
 ```
 
-```{r}
+```{r paged.print=TRUE}
 head(in_patient)
 ```
 
+然后，我们读取患者唯一识别码EMPI。
 
-## empi
 ```{r message=FALSE, warning=FALSE}
 empi<-read_csv("data/empi.csv")
 ```
@@ -42,7 +59,7 @@ empi<-read_csv("data/empi.csv")
 glimpse(empi)
 ```
 
-```{r}
+```{r paged.print=TRUE}
 head(empi)
 ```
 
@@ -52,7 +69,12 @@ empi%>%
   select(pid,empi)
 ```
 
-### 末次住院
+#### 末次住院
+
+接下来，我们要选取每一位患者的末次住院信息，作为基线信息。
+
+这里面，我们利用了`arrange`（排序）以及`distinct`（唯一）的算法，并得到我们希望的患者列表。
+
 ```{r}
 final<-
 in_patient%>%
@@ -63,13 +85,14 @@ in_patient%>%
   select(-X1)
 ```
 
-### 时间跨度
+我们来看一下患者的时间跨度
+
 ```{r}
 summary(final$in_datetime)
 ```
 
-## 末次化验
-```{r}
+#### 末次化验
+```{r message=FALSE, warning=FALSE}
 lis_sample_in <- read_csv("data/lis_sample.csv")
 ```
 
