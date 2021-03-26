@@ -58,7 +58,9 @@ Inclisiran以及ORION 18是正在开展的一项RCT研究。
 
 ### 患者筛选过程
 
-所有的筛选过程，都记录在`inclisiran_patient_filter.Rmd`这个R markdown文档里。包含输出内容的文档，可以在`inclisiran_patient_filter.md`中查看。里面也包含详细的考虑和过程。
+所有的筛选过程，可以在[`inclisiran_patient_filter.md`](../inclisiran_patient_filter.md)中查看。里面也包含详细的考虑和过程。
+
+原始的R notebook文档，都记录在[`inclisiran_patient_filter.Rmd`](../inclisiran_patient_filter.Rmd)。
 
 通常，我们会利用**Rnotebook**或是**Jupyter Notebook**这一类**文学式编程**的工具，将我们解决问题的思路、代码以及输出的结果可以统一在一个界面展示。这样做的好处，可以极大提高临床医生与数据科学家之间沟通的效率，而且任何动态的修改过程也都可以一目了然。
 

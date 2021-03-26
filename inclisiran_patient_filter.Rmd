@@ -228,14 +228,10 @@ final%>%
 meds <- read_csv('data/meds.csv',trim_ws = TRUE)
 ```
 
-```{r}
-glimpse(meds)
-```
-
 这是经过处理后的医嘱数据的格式。
 
 ```{r}
-head(meds,20)
+glimpse(meds)
 ```
 
 ### 他汀药物的标准化
