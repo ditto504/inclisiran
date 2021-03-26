@@ -81,6 +81,8 @@ in_patient%>%
   arrange(pid,desc(in_datetime))%>%
   distinct(empi,.keep_all = TRUE)%>%
   select(-X1)
+
+final
 ```
 
 #### 末次化验
@@ -143,33 +145,19 @@ lis_sample_in%>%
 之后，我们查看一下所有的LDL-C数据。
 
 ```{r}
-#tmp<-
-lis_result_in%>%
-  filter(ENGLISH_NAME %in% c("LDL-C"))%>%
-  left_join(tmp, by="sid")%>%
-  select(empi,ENGLISH_NAME,QUANTITATIVE_RESULT,sampling_time)%>%
-  filter(!is.na(empi))
-
 tmp<-
 lis_result_in%>%
   filter(ENGLISH_NAME %in% c("LDL-C"))%>%
   left_join(tmp, by="sid")%>%
   select(empi,ENGLISH_NAME,QUANTITATIVE_RESULT,sampling_time)%>%
   filter(!is.na(empi))
+
+tmp
 ```
 
 并利用`group_by`和`summarise`（分组及总结）功能，得出每一位患者**末次**的LDL-C结果及时间。
 
 ```{r}
-#tmp<-
-tmp%>%
-  arrange(empi,sampling_time)%>%
-  group_by(empi)%>%
-  summarise(
-    last_ldl_time=last(sampling_time),
-    last_ldl=last(QUANTITATIVE_RESULT)
-  )
-
 tmp<-
 tmp%>%
   arrange(empi,sampling_time)%>%
@@ -178,6 +166,8 @@ tmp%>%
     last_ldl_time=last(sampling_time),
     last_ldl=last(QUANTITATIVE_RESULT)
   )
+
+tmp
 ```
 
 #### 缺失比例
@@ -257,25 +247,6 @@ head(meds,20)
 
 
 ```{r}
-#tmp<-
-meds%>%
-  filter(str_detect(tolower(ADVICE_CONTENT),"(他汀)"))%>%
-  arrange(pflow,med_time)%>%
-  mutate(statin_type=case_when(
-    str_detect(ADVICE_CONTENT,"阿托伐")~"阿托伐",
-    str_detect(ADVICE_CONTENT,"瑞舒伐")~"瑞舒伐",
-    str_detect(ADVICE_CONTENT,"普伐")~"普伐",
-    str_detect(ADVICE_CONTENT,"辛伐")~"辛伐",
-    str_detect(ADVICE_CONTENT,"氟伐")~"氟伐",
-    str_detect(ADVICE_CONTENT,"匹伐")~"匹伐"
-  ))%>%
-  group_by(pflow)%>%
-  summarise(
-    statin_type=last(statin_type),
-    dose=last(DOSAGE)
-  )%>%
-  ungroup()
-
 tmp<-
 meds%>%
   filter(str_detect(tolower(ADVICE_CONTENT),"(他汀)"))%>%
@@ -294,22 +265,13 @@ meds%>%
     dose=last(DOSAGE)
   )%>%
   ungroup()
+
+tmp
 ```
 
 同样的，我们还看了依折麦布的使用情况。虽然这对于ORION 18并不是必要的。
 
 ```{r}
-#tmp1<-
-meds%>%
-  filter(str_detect(tolower(ADVICE_CONTENT),"(依折麦布)"))%>%
-  select(pflow,med_time)%>%
-  mutate(emab=1)%>%
-  group_by(pflow)%>%
-  summarise(
-    emab=max(emab)
-  )%>%
-  ungroup()
-
 tmp1<-
 meds%>%
   filter(str_detect(tolower(ADVICE_CONTENT),"(依折麦布)"))%>%
@@ -320,6 +282,8 @@ meds%>%
     emab=max(emab)
   )%>%
   ungroup()
+
+tmp1
 ```
 ### 缺失比例
 ```{r}

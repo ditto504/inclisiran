@@ -92,7 +92,19 @@ in_patient%>%
   arrange(pid,desc(in_datetime))%>%
   distinct(empi,.keep_all = TRUE)%>%
   select(-X1)
+
+final
 ```
+
+    ## # A tibble: 6 x 6
+    ##   pid      pflow    in_datetime         out_datetime        dept         empi   
+    ##   <chr>    <chr>    <dttm>              <dttm>              <chr>        <chr>  
+    ## 1 0333a2e9 3df91585 3303-02-14 10:36:00 3303-02-21 08:40:50 心内科二病房 e22d2b…
+    ## 2 46cfd386 15d5f41d 3720-04-23 14:48:00 3720-04-27 08:30:16 心内科一病房 2fe133…
+    ## 3 4bc06562 e472205a 3219-06-29 11:16:00 3219-07-05 09:04:43 心内科二病房 32bd69…
+    ## 4 8f0b5493 43c6069a 3936-07-15 10:38:00 3936-07-18 08:51:28 心内科一病房 bdf98e…
+    ## 5 9e3b9f0e 0d989e50 3124-01-25 20:55:49 3124-01-30 11:07:02 心内科一病房 424756…
+    ## 6 c35f2fda b69aecbd 3704-02-27 10:49:00 3704-03-02 08:19:11 心内科二病房 e28aae…
 
 #### 末次化验
 
@@ -187,12 +199,14 @@ lis_sample_in%>%
 之后，我们查看一下所有的LDL-C数据。
 
 ``` r
-#tmp<-
+tmp<-
 lis_result_in%>%
   filter(ENGLISH_NAME %in% c("LDL-C"))%>%
   left_join(tmp, by="sid")%>%
   select(empi,ENGLISH_NAME,QUANTITATIVE_RESULT,sampling_time)%>%
   filter(!is.na(empi))
+
+tmp
 ```
 
     ## # A tibble: 35 x 4
@@ -210,19 +224,10 @@ lis_result_in%>%
     ## 10 2fe13316 LDL-C        1.84                3722-01-26 08:09:55
     ## # … with 25 more rows
 
-``` r
-tmp<-
-lis_result_in%>%
-  filter(ENGLISH_NAME %in% c("LDL-C"))%>%
-  left_join(tmp, by="sid")%>%
-  select(empi,ENGLISH_NAME,QUANTITATIVE_RESULT,sampling_time)%>%
-  filter(!is.na(empi))
-```
-
 并利用`group_by`和`summarise`（分组及总结）功能，得出每一位患者**末次**的LDL-C结果及时间。
 
 ``` r
-#tmp<-
+tmp<-
 tmp%>%
   arrange(empi,sampling_time)%>%
   group_by(empi)%>%
@@ -230,6 +235,8 @@ tmp%>%
     last_ldl_time=last(sampling_time),
     last_ldl=last(QUANTITATIVE_RESULT)
   )
+
+tmp
 ```
 
     ## # A tibble: 6 x 3
@@ -241,17 +248,6 @@ tmp%>%
     ## 4 bdf98ea4 3938-02-27 09:36:16 2.14    
     ## 5 e22d2bb8 3305-02-27 07:41:26 3.08    
     ## 6 e28aaed7 3706-03-10 09:20:36 2.38
-
-``` r
-tmp<-
-tmp%>%
-  arrange(empi,sampling_time)%>%
-  group_by(empi)%>%
-  summarise(
-    last_ldl_time=last(sampling_time),
-    last_ldl=last(QUANTITATIVE_RESULT)
-  )
-```
 
 #### 缺失比例
 
@@ -393,37 +389,6 @@ head(meds,20)
 与LDL-C类似，医嘱中也存在很多的**非标准数据**。我们基于此前的经验，对他汀药物进行了标准的分类处理。
 
 ``` r
-#tmp<-
-meds%>%
-  filter(str_detect(tolower(ADVICE_CONTENT),"(他汀)"))%>%
-  arrange(pflow,med_time)%>%
-  mutate(statin_type=case_when(
-    str_detect(ADVICE_CONTENT,"阿托伐")~"阿托伐",
-    str_detect(ADVICE_CONTENT,"瑞舒伐")~"瑞舒伐",
-    str_detect(ADVICE_CONTENT,"普伐")~"普伐",
-    str_detect(ADVICE_CONTENT,"辛伐")~"辛伐",
-    str_detect(ADVICE_CONTENT,"氟伐")~"氟伐",
-    str_detect(ADVICE_CONTENT,"匹伐")~"匹伐"
-  ))%>%
-  group_by(pflow)%>%
-  summarise(
-    statin_type=last(statin_type),
-    dose=last(DOSAGE)
-  )%>%
-  ungroup()
-```
-
-    ## # A tibble: 6 x 3
-    ##   pflow    statin_type  dose
-    ##   <chr>    <chr>       <dbl>
-    ## 1 0d989e50 阿托伐         40
-    ## 2 15d5f41d 阿托伐         40
-    ## 3 3df91585 阿托伐         40
-    ## 4 43c6069a 瑞舒伐         20
-    ## 5 b69aecbd 阿托伐         80
-    ## 6 e472205a 阿托伐         40
-
-``` r
 tmp<-
 meds%>%
   filter(str_detect(tolower(ADVICE_CONTENT),"(他汀)"))%>%
@@ -442,27 +407,21 @@ meds%>%
     dose=last(DOSAGE)
   )%>%
   ungroup()
+
+tmp
 ```
+
+    ## # A tibble: 6 x 3
+    ##   pflow    statin_type  dose
+    ##   <chr>    <chr>       <dbl>
+    ## 1 0d989e50 阿托伐         40
+    ## 2 15d5f41d 阿托伐         40
+    ## 3 3df91585 阿托伐         40
+    ## 4 43c6069a 瑞舒伐         20
+    ## 5 b69aecbd 阿托伐         80
+    ## 6 e472205a 阿托伐         40
 
 同样的，我们还看了依折麦布的使用情况。虽然这对于ORION 18并不是必要的。
-
-``` r
-#tmp1<-
-meds%>%
-  filter(str_detect(tolower(ADVICE_CONTENT),"(依折麦布)"))%>%
-  select(pflow,med_time)%>%
-  mutate(emab=1)%>%
-  group_by(pflow)%>%
-  summarise(
-    emab=max(emab)
-  )%>%
-  ungroup()
-```
-
-    ## # A tibble: 1 x 2
-    ##   pflow     emab
-    ##   <chr>    <dbl>
-    ## 1 15d5f41d     1
 
 ``` r
 tmp1<-
@@ -475,7 +434,14 @@ meds%>%
     emab=max(emab)
   )%>%
   ungroup()
+
+tmp1
 ```
+
+    ## # A tibble: 1 x 2
+    ##   pflow     emab
+    ##   <chr>    <dbl>
+    ## 1 15d5f41d     1
 
 ### 缺失比例
 
