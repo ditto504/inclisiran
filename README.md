@@ -12,7 +12,7 @@ Inclisiran以及ORION 18是正在开展的一项RCT研究。
 
 ## 具体筛选过程
 
-[`inclisiran_patient_filter.md`](../inclisiran_patient_filter.md)
+[`inclisiran_patient_filter.md`](inclisiran_patient_filter.md)
 
 ## 希望达到的目的
 
