@@ -4,8 +4,9 @@ author: "LI, Yuxi, MD"
 date: "2021/3/18"
 output:
   github_document:
-    toc: true
+    toc: TRUE
     toc_depth: 2
+    df_print : "kable"
 ---
 
 ```{r setup, include=FALSE}
@@ -46,7 +47,7 @@ in_patient <- read_csv('data/in_patient.csv')
 ```
 
 ```{r}
-glimpse(in_patient)
+head(in_patient)
 ```
 
 然后，我们读取患者唯一识别码EMPI。以便于后续匹配其门诊检验数据信息。
@@ -56,7 +57,7 @@ empi<-read_csv("data/empi.csv")
 ```
 
 ```{r}
-glimpse(empi)
+head(empi)
 ```
 
 ```{r}
@@ -98,7 +99,7 @@ lis_sample_in <- select(lis_sample_in, -X1)
 ```
 
 ```{r}
-glimpse(lis_sample_in)
+head(lis_sample_in)
 ```
 
 从上面可以看到，虽然我们只有9例患者，但是包含了208份样本的化验数据。
@@ -108,10 +109,6 @@ glimpse(lis_sample_in)
 
 ```{r message=FALSE, warning=FALSE}
 lis_result_in <- read_csv("data/lis_result.csv")
-```
-
-```{r}
-glimpse(lis_result_in)
 ```
 
 这里我们用表格形式展示一下化验结果的数据格式。
