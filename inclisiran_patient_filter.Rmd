@@ -6,7 +6,7 @@ output:
   github_document:
     toc: TRUE
     toc_depth: 2
-    df_print : "kable"
+    df_print: "kable"
 ---
 
 ```{r setup, include=FALSE}
