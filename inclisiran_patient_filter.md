@@ -22,7 +22,11 @@ options(scipen = 50)
 
 1.  已经住院，确诊了ASCVD的患者，且在门诊随访中记录了LDL-C；
 
-2.  纯门诊，通过诊断与检验系统进行筛选、甚至实时监测；
+这一类患者的优势，在于临床情况明确，而且通常经过了住院治疗甚至手术的患者，后续依从性也会更好。但需要注意，根据排除标准，必须筛选那些至少在**3个月前**住院的患者。
+
+2.  纯门诊，通过诊断与检验系统进行筛选、甚至开展实时的监测；
+
+如果有条件，目前HIT的技术是可以实现，利用电子信息系统实时监测，并通过弹窗等方式提醒适合入选的患者的。但门诊的问题在于，很可能患者并不完全符合临床诊断的要求，而且**门诊的医嘱剂量，往往并不是患者真实服药的剂量。**
 
 ### 住院患者的筛选
 
@@ -47,21 +51,7 @@ glimpse(in_patient)
     ## $ out_datetime <dttm> 3303-02-21 08:40:50, 3124-01-30 11:07:02, 3698-04-18 14…
     ## $ dept         <chr> "心内科二病房", "心内科一病房", "神经外科病房", "心内科二病房", "心内科二病房", "心内科一病…
 
-``` r
-head(in_patient)
-```
-
-    ## # A tibble: 6 x 6
-    ##      X1 pid      pflow    in_datetime         out_datetime        dept        
-    ##   <dbl> <chr>    <chr>    <dttm>              <dttm>              <chr>       
-    ## 1     1 0333a2e9 3df91585 3303-02-14 10:36:00 3303-02-21 08:40:50 心内科二病房
-    ## 2     2 9e3b9f0e 0d989e50 3124-01-25 20:55:49 3124-01-30 11:07:02 心内科一病房
-    ## 3     3 c35f2fda 06da340d 3698-04-10 16:33:12 3698-04-18 14:27:51 神经外科病房
-    ## 4     4 c35f2fda b69aecbd 3704-02-27 10:49:00 3704-03-02 08:19:11 心内科二病房
-    ## 5     5 c35f2fda 3579fa0d 3703-10-20 14:29:42 3703-10-30 08:41:02 心内科二病房
-    ## 6     6 46cfd386 15d5f41d 3720-04-23 14:48:00 3720-04-27 08:30:16 心内科一病房
-
-然后，我们读取患者唯一识别码EMPI。
+然后，我们读取患者唯一识别码EMPI。以便于后续匹配其门诊检验数据信息。
 
 ``` r
 empi<-read_csv("data/empi.csv")
@@ -81,20 +71,6 @@ glimpse(empi)
     ## $ birthday <date> 3221-09-25, 3068-04-02, 3644-04-21, 3674-08-30, 3151-03-01,…
 
 ``` r
-head(empi)
-```
-
-    ## # A tibble: 6 x 6
-    ##      X1 empi     pid      name  sex   birthday  
-    ##   <dbl> <chr>    <chr>    <chr> <chr> <date>    
-    ## 1     1 e22d2bb8 0333a2e9 张三  男    3221-09-25
-    ## 2     2 424756a9 9e3b9f0e 李四  男    3068-04-02
-    ## 3     3 e28aaed7 c35f2fda 王五  男    3644-04-21
-    ## 4     4 2fe13316 46cfd386 赵六  男    3674-08-30
-    ## 5     5 32bd69ef 4bc06562 周七  男    3151-03-01
-    ## 6     6 bdf98ea4 8f0b5493 马八  男    3883-07-28
-
-``` r
 tmp<-
 empi%>%
   select(pid,empi)
@@ -102,9 +78,11 @@ empi%>%
 
 #### 末次住院
 
-接下来，我们要选取每一位患者的末次住院信息，作为基线信息。
+接下来，我们要选取每一位患者的**末次住院信息**，作为基线信息。之所以这样选择，是可以更特意的筛选出那些已经服用最大剂量他汀的患者。
 
-这里面，我们利用了`arrange`（排序）以及`distinct`（唯一）的算法，并得到我们希望的患者列表。
+这里面，我们利用了`arrange`（排序）以及`distinct`（唯一）的数据处理算法，并得到我们希望的患者列表。
+
+并且，我们筛选了3个月前住院的患者。（由于时间隐私化的处理，具体的代码就不在这里展示了）
 
 ``` r
 final<-
@@ -116,18 +94,9 @@ in_patient%>%
   select(-X1)
 ```
 
-我们来看一下患者的时间跨度
-
-``` r
-summary(final$in_datetime)
-```
-
-    ##                  Min.               1st Qu.                Median 
-    ## "3124-01-25 20:55:49" "3240-05-25 17:06:00" "3503-08-22 22:42:30" 
-    ##                  Mean               3rd Qu.                  Max. 
-    ## "3501-04-13 13:10:28" "3716-04-09 13:48:15" "3936-07-15 10:38:00"
-
 #### 末次化验
+
+接下来，我们使用`EMPI`来匹配获得每位患者在全院系统（包括住院与门诊）的**末次**LDL-C化验数据。
 
 ``` r
 lis_sample_in <- read_csv("data/lis_sample.csv")
@@ -148,19 +117,9 @@ glimpse(lis_sample_in)
     ## $ sampling_time <dttm> 3219-06-29 11:52:59, 3219-06-29 11:52:50, 3219-06-29 1…
     ## $ empi          <chr> "32bd69ef", "32bd69ef", "32bd69ef", "32bd69ef", "32bd69…
 
-``` r
-head(lis_sample_in)
-```
+从上面可以看到，虽然我们只有9例患者，但是包含了208份样本的化验数据。
 
-    ## # A tibble: 6 x 4
-    ##   sid              pflow    sampling_time       empi    
-    ##   <chr>            <chr>    <dttm>              <chr>   
-    ## 1 32190629G0020251 e472205a 3219-06-29 11:52:59 32bd69ef
-    ## 2 32190629G0017007 e472205a 3219-06-29 11:52:50 32bd69ef
-    ## 3 32190629G0020616 e472205a 3219-06-29 11:52:46 32bd69ef
-    ## 4 32190701G0013903 e472205a 3219-07-01 09:12:02 32bd69ef
-    ## 5 32190701G0351138 e472205a 3219-06-29 11:52:56 32bd69ef
-    ## 6 32190701G0350285 e472205a 3219-06-29 11:52:42 32bd69ef
+接下来，我们读取具体的检验条目结果数据。
 
 ``` r
 lis_result_in <- read_csv("data/lis_result.csv")
@@ -181,6 +140,8 @@ glimpse(lis_result_in)
     ## $ TEST_ITEM_REFERENCE <chr> NA, "1.2-2.4", NA, "40-55", "45-125", "9-50", "15…
     ## $ TEST_ITEM_UNIT      <chr> "ml/min/1.73㎡", NA, "mmol/L", "g/L", "IU/L", "IU/…
 
+这里我们用表格形式展示一下化验结果的数据格式。
+
 ``` r
 head(lis_result_in)
 ```
@@ -196,6 +157,10 @@ head(lis_result_in)
     ## 6     6 3220… ALT*         谷丙转氨酶   8                l               
     ## # … with 2 more variables: TEST_ITEM_REFERENCE <chr>, TEST_ITEM_UNIT <chr>
 
+##### LDL-C的标准化
+
+考虑到不同医疗机构、不同的LIS（检验信息管理系统）对于LDL-C不一定使用统一的编码和术语表述，所以在使用EHR系统开展类似的研究工作时，一个很大的工作量是进行术语的标准化处理。比如，在这个例子中，我们可以使用关键字`低密度`来找出所有我们希望找到的检验条目。
+
 ``` r
 lis_result_in%>%
   #filter(str_detect(tolower(ENGLISH_NAME),"ldl"))%>%
@@ -210,12 +175,40 @@ lis_result_in%>%
     ##   <chr>        <chr>              <int>
     ## 1 LDL-C        低密度脂蛋白胆固醇    35
 
+由于这里只展示了样例数据，所以输出的结果只有1条。但实际上，利用`低密度`作为关键词，还可能会搜出`极低密度胆固醇`等项目，我们需要配合临床知识将其进一步精确匹配与筛选。
+
 ``` r
 tmp<-
 lis_sample_in%>%
   filter(!is.na(empi))%>%
   semi_join(final,by=c("empi"))
 ```
+
+之后，我们查看一下所有的LDL-C数据。
+
+``` r
+#tmp<-
+lis_result_in%>%
+  filter(ENGLISH_NAME %in% c("LDL-C"))%>%
+  left_join(tmp, by="sid")%>%
+  select(empi,ENGLISH_NAME,QUANTITATIVE_RESULT,sampling_time)%>%
+  filter(!is.na(empi))
+```
+
+    ## # A tibble: 35 x 4
+    ##    empi     ENGLISH_NAME QUANTITATIVE_RESULT sampling_time      
+    ##    <chr>    <chr>        <chr>               <dttm>             
+    ##  1 32bd69ef LDL-C        1.49                3220-07-10 07:51:27
+    ##  2 e28aaed7 LDL-C        1.77                3704-11-07 08:57:55
+    ##  3 e28aaed7 LDL-C        1.15                3704-12-28 09:09:18
+    ##  4 2fe13316 LDL-C        1.86                3721-08-18 07:52:46
+    ##  5 bdf98ea4 LDL-C        2.14                3938-02-27 09:36:16
+    ##  6 e28aaed7 LDL-C        1.68                3703-12-24 10:30:38
+    ##  7 e28aaed7 LDL-C        2.26                3704-05-09 07:54:29
+    ##  8 e22d2bb8 LDL-C        1.88                3303-09-19 07:35:23
+    ##  9 2fe13316 LDL-C        4.36                3720-04-09 06:22:17
+    ## 10 2fe13316 LDL-C        1.84                3722-01-26 08:09:55
+    ## # … with 25 more rows
 
 ``` r
 tmp<-
@@ -226,6 +219,29 @@ lis_result_in%>%
   filter(!is.na(empi))
 ```
 
+并利用`group_by`和`summarise`（分组及总结）功能，得出每一位患者**末次**的LDL-C结果及时间。
+
+``` r
+#tmp<-
+tmp%>%
+  arrange(empi,sampling_time)%>%
+  group_by(empi)%>%
+  summarise(
+    last_ldl_time=last(sampling_time),
+    last_ldl=last(QUANTITATIVE_RESULT)
+  )
+```
+
+    ## # A tibble: 6 x 3
+    ##   empi     last_ldl_time       last_ldl
+    ##   <chr>    <dttm>              <chr>   
+    ## 1 2fe13316 3722-01-26 08:09:55 1.84    
+    ## 2 32bd69ef 3221-03-04 09:04:06 1.92    
+    ## 3 424756a9 3126-01-04 07:37:02 1.91    
+    ## 4 bdf98ea4 3938-02-27 09:36:16 2.14    
+    ## 5 e22d2bb8 3305-02-27 07:41:26 3.08    
+    ## 6 e28aaed7 3706-03-10 09:20:36 2.38
+
 ``` r
 tmp<-
 tmp%>%
@@ -233,11 +249,13 @@ tmp%>%
   group_by(empi)%>%
   summarise(
     last_ldl_time=last(sampling_time),
-    last_ldl=last(sampling_time)
+    last_ldl=last(QUANTITATIVE_RESULT)
   )
 ```
 
-### 缺失比例
+#### 缺失比例
+
+考虑到筛选的效率，我们可以在每一次小步骤进行过程中对关键变量的缺失比例进行评价。
 
 ``` r
 final%>%
@@ -250,7 +268,7 @@ final%>%
     ##   <dbl> <dbl>       <dbl>        <dbl> <dbl> <dbl>         <dbl>    <dbl>
     ## 1     0     0           0            0     0     0             0        0
 
-### 更新final数据
+缺失比例满意，即可更新我们筛选的数据。
 
 ``` r
 final<-
@@ -260,6 +278,8 @@ final%>%
 ```
 
 ## 筛选1
+
+根据我们上面提到的思路，首先我们来筛选那些已经住院，确诊了ASCVD的患者，且在门诊随访中记录了LDL-C的患者。
 
 ``` r
 glimpse(final)
@@ -274,7 +294,14 @@ glimpse(final)
     ## $ dept          <chr> "心内科二病房", "心内科一病房", "心内科二病房", "心内科一病房", "心内科一病房", "心内科二…
     ## $ empi          <chr> "e22d2bb8", "2fe13316", "32bd69ef", "bdf98ea4", "424756…
     ## $ last_ldl_time <dttm> 3305-02-27 07:41:26, 3722-01-26 08:09:55, 3221-03-04 0…
-    ## $ last_ldl      <dttm> 3305-02-27 07:41:26, 3722-01-26 08:09:55, 3221-03-04 0…
+    ## $ last_ldl      <chr> "3.08", "1.84", "1.92", "2.14", "1.91", "2.38"
+
+下面的代码展示了如下的筛选条件：
+
+1.  末次LDL-C\>1.8mmol/L；
+2.  末次LDL-C检测时间在基线出院时间之后；
+
+实际上我们在正式开展工作时候，还对患者的`院内诊断`、`介入手术`等信息进行了筛选，以确保其符合ASCVD的诊断标准。由于具体内容涉及更多院内隐私数据，故未在此处赘述。
 
 ``` r
 #out<-
@@ -286,28 +313,32 @@ final%>%
   filter(followup>0)%>%
   arrange(desc(last_ldl_time))%>%
   left_join(select(empi,empi,name,sex,birthday),by=c("empi"))%>%
-  mutate(age=round(as.numeric(difftime(as.Date(last_ldl_time),birthday,units="days"))/365.25))
+  mutate(age=round(as.numeric(difftime(as.Date(last_ldl_time),birthday,units="days"))/365.25))%>%
+  select(-birthday)
 ```
 
-    ## # A tibble: 6 x 11
-    ##   empi  pid   out_datetime        dept  last_ldl_time       last_ldl           
-    ##   <chr> <chr> <dttm>              <chr> <dttm>              <dttm>             
-    ## 1 bdf9… 8f0b… 3936-07-18 08:51:28 心内科一… 3938-02-27 09:36:16 3938-02-27 09:36:16
-    ## 2 2fe1… 46cf… 3720-04-27 08:30:16 心内科一… 3722-01-26 08:09:55 3722-01-26 08:09:55
-    ## 3 e28a… c35f… 3704-03-02 08:19:11 心内科二… 3706-03-10 09:20:36 3706-03-10 09:20:36
-    ## 4 e22d… 0333… 3303-02-21 08:40:50 心内科二… 3305-02-27 07:41:26 3305-02-27 07:41:26
-    ## 5 32bd… 4bc0… 3219-07-05 09:04:43 心内科二… 3221-03-04 09:04:06 3221-03-04 09:04:06
-    ## 6 4247… 9e3b… 3124-01-30 11:07:02 心内科一… 3126-01-04 07:37:02 3126-01-04 07:37:02
-    ## # … with 5 more variables: followup <drtn>, name <chr>, sex <chr>,
-    ## #   birthday <date>, age <dbl>
+    ## # A tibble: 6 x 10
+    ##   empi  pid   out_datetime        dept  last_ldl_time       last_ldl followup
+    ##   <chr> <chr> <dttm>              <chr> <dttm>              <chr>    <drtn>  
+    ## 1 bdf9… 8f0b… 3936-07-18 08:51:28 心内科一… 3938-02-27 09:36:16 2.14     589 days
+    ## 2 2fe1… 46cf… 3720-04-27 08:30:16 心内科一… 3722-01-26 08:09:55 1.84     639 days
+    ## 3 e28a… c35f… 3704-03-02 08:19:11 心内科二… 3706-03-10 09:20:36 2.38     738 days
+    ## 4 e22d… 0333… 3303-02-21 08:40:50 心内科二… 3305-02-27 07:41:26 3.08     737 days
+    ## 5 32bd… 4bc0… 3219-07-05 09:04:43 心内科二… 3221-03-04 09:04:06 1.92     608 days
+    ## 6 4247… 9e3b… 3124-01-30 11:07:02 心内科一… 3126-01-04 07:37:02 1.91     705 days
+    ## # … with 3 more variables: name <chr>, sex <chr>, age <dbl>
 
-### 导出
+最终，我们筛选出了6例患者。为了便于后续进一步精细化的筛选工作，我们也带出了他们的姓名、性别、年龄等信息。
 
-``` r
-#write.csv(out,"data/inclisiran/more20210316.csv")
-```
+事实上，哪怕没有药物医嘱的数据，经过这样一次筛选，我们已经可以大大提高找到目标受试者的概率了。因为后面唯一需要核实的，就是这部分患者目前的用药信息。我们可以将其导出，并交给负责的同事去进一步筛选。
 
-## 出院带药降脂方案
+## 筛选2
+
+### 出院带药降脂方案
+
+由于上面筛选出来的患者，可能有相当的比例并没有服用最大耐受剂量的他汀。所以我们还需要对这些患者基线出院时候的他汀剂量进行筛选。
+
+首先我们读取医嘱数据。
 
 ``` r
 meds <- read_csv('data/meds.csv',trim_ws = TRUE)
@@ -326,6 +357,8 @@ glimpse(meds)
     ## $ DOSAGE         <dbl> 100.00, 75.00, 10.00, 40.00, 5.00, 6.25, 1000.00, 100.…
     ## $ DOSAGE_UNIT    <chr> "mg", "mg", "mg", "mg", "mg", "mg", "mg", "mg", "mg", …
     ## $ med_time       <dttm> 3219-07-04 18:06:44, 3219-07-04 18:06:44, 3219-07-04 …
+
+这是经过处理后的医嘱数据的格式。
 
 ``` r
 head(meds,20)
@@ -355,6 +388,41 @@ head(meds,20)
     ## 19    19 15d5f… 磷酸西格列汀片||捷诺维片… 100mg… 1.00e2 mg          3720-04-26 10:03:14
     ## 20    20 0d989… 潘妥洛克肠溶片||泮托拉唑钠肠溶片… 40MG … 4.00e1 mg          3124-01-29 10:49:25
 
+### 他汀药物的标准化
+
+与LDL-C类似，医嘱中也存在很多的**非标准数据**。我们基于此前的经验，对他汀药物进行了标准的分类处理。
+
+``` r
+#tmp<-
+meds%>%
+  filter(str_detect(tolower(ADVICE_CONTENT),"(他汀)"))%>%
+  arrange(pflow,med_time)%>%
+  mutate(statin_type=case_when(
+    str_detect(ADVICE_CONTENT,"阿托伐")~"阿托伐",
+    str_detect(ADVICE_CONTENT,"瑞舒伐")~"瑞舒伐",
+    str_detect(ADVICE_CONTENT,"普伐")~"普伐",
+    str_detect(ADVICE_CONTENT,"辛伐")~"辛伐",
+    str_detect(ADVICE_CONTENT,"氟伐")~"氟伐",
+    str_detect(ADVICE_CONTENT,"匹伐")~"匹伐"
+  ))%>%
+  group_by(pflow)%>%
+  summarise(
+    statin_type=last(statin_type),
+    dose=last(DOSAGE)
+  )%>%
+  ungroup()
+```
+
+    ## # A tibble: 6 x 3
+    ##   pflow    statin_type  dose
+    ##   <chr>    <chr>       <dbl>
+    ## 1 0d989e50 阿托伐         40
+    ## 2 15d5f41d 阿托伐         40
+    ## 3 3df91585 阿托伐         40
+    ## 4 43c6069a 瑞舒伐         20
+    ## 5 b69aecbd 阿托伐         80
+    ## 6 e472205a 阿托伐         40
+
 ``` r
 tmp<-
 meds%>%
@@ -375,6 +443,26 @@ meds%>%
   )%>%
   ungroup()
 ```
+
+同样的，我们还看了依折麦布的使用情况。虽然这对于ORION 18并不是必要的。
+
+``` r
+#tmp1<-
+meds%>%
+  filter(str_detect(tolower(ADVICE_CONTENT),"(依折麦布)"))%>%
+  select(pflow,med_time)%>%
+  mutate(emab=1)%>%
+  group_by(pflow)%>%
+  summarise(
+    emab=max(emab)
+  )%>%
+  ungroup()
+```
+
+    ## # A tibble: 1 x 2
+    ##   pflow     emab
+    ##   <chr>    <dbl>
+    ## 1 15d5f41d     1
 
 ``` r
 tmp1<-
@@ -404,7 +492,7 @@ final%>%
     ## 1     0     0           0            0     0     0             0        0
     ## # … with 3 more variables: statin_type <dbl>, dose <dbl>, emab <dbl>
 
-### 更新final数据
+在保证满意的缺失比例前提下，我们再次更新数据。
 
 ``` r
 final<-
@@ -414,7 +502,7 @@ final%>%
   filter(!is.na(statin_type))
 ```
 
-## 筛选2
+然后，我们就可以在刚才的基础上，进一步对用药数据进行筛选，找出那些已经服用**最大耐受剂量**他汀，依然出院后末次随访LDL-C\>1.8mmol/L的患者。
 
 ``` r
 glimpse(final)
@@ -429,7 +517,7 @@ glimpse(final)
     ## $ dept          <chr> "心内科二病房", "心内科一病房", "心内科二病房", "心内科一病房", "心内科一病房", "心内科二…
     ## $ empi          <chr> "e22d2bb8", "2fe13316", "32bd69ef", "bdf98ea4", "424756…
     ## $ last_ldl_time <dttm> 3305-02-27 07:41:26, 3722-01-26 08:09:55, 3221-03-04 0…
-    ## $ last_ldl      <dttm> 3305-02-27 07:41:26, 3722-01-26 08:09:55, 3221-03-04 0…
+    ## $ last_ldl      <chr> "3.08", "1.84", "1.92", "2.14", "1.91", "2.38"
     ## $ statin_type   <chr> "阿托伐", "阿托伐", "阿托伐", "瑞舒伐", "阿托伐", "阿托伐"
     ## $ dose          <dbl> 40, 40, 40, 20, 40, 80
     ## $ emab          <dbl> NA, 1, NA, NA, NA, NA
@@ -452,23 +540,66 @@ final%>%
   arrange(desc(last_ldl_time))%>%
   left_join(select(empi,empi,name,sex,birthday),by=c("empi"))%>%
   mutate(age=round(as.numeric(difftime(as.Date(last_ldl_time),birthday,units="days"))/365.25))%>%
-  select(-birthday)
+  select(-dept,-birthday,-max,-empi,-followup)
 ```
 
-    ## # A tibble: 6 x 14
-    ##   empi  pid   out_datetime        dept  last_ldl_time       last_ldl           
-    ##   <chr> <chr> <dttm>              <chr> <dttm>              <dttm>             
-    ## 1 bdf9… 8f0b… 3936-07-18 08:51:28 心内科一… 3938-02-27 09:36:16 3938-02-27 09:36:16
-    ## 2 2fe1… 46cf… 3720-04-27 08:30:16 心内科一… 3722-01-26 08:09:55 3722-01-26 08:09:55
-    ## 3 e28a… c35f… 3704-03-02 08:19:11 心内科二… 3706-03-10 09:20:36 3706-03-10 09:20:36
-    ## 4 e22d… 0333… 3303-02-21 08:40:50 心内科二… 3305-02-27 07:41:26 3305-02-27 07:41:26
-    ## 5 32bd… 4bc0… 3219-07-05 09:04:43 心内科二… 3221-03-04 09:04:06 3221-03-04 09:04:06
-    ## 6 4247… 9e3b… 3124-01-30 11:07:02 心内科一… 3126-01-04 07:37:02 3126-01-04 07:37:02
-    ## # … with 8 more variables: statin_type <chr>, dose <dbl>, emab <dbl>,
-    ## #   max <chr>, followup <drtn>, name <chr>, sex <chr>, age <dbl>
+    ## # A tibble: 6 x 10
+    ##   pid   out_datetime        last_ldl_time       last_ldl statin_type  dose  emab
+    ##   <chr> <dttm>              <dttm>              <chr>    <chr>       <dbl> <dbl>
+    ## 1 8f0b… 3936-07-18 08:51:28 3938-02-27 09:36:16 2.14     瑞舒伐         20    NA
+    ## 2 46cf… 3720-04-27 08:30:16 3722-01-26 08:09:55 1.84     阿托伐         40     1
+    ## 3 c35f… 3704-03-02 08:19:11 3706-03-10 09:20:36 2.38     阿托伐         80    NA
+    ## 4 0333… 3303-02-21 08:40:50 3305-02-27 07:41:26 3.08     阿托伐         40    NA
+    ## 5 4bc0… 3219-07-05 09:04:43 3221-03-04 09:04:06 1.92     阿托伐         40    NA
+    ## 6 9e3b… 3124-01-30 11:07:02 3126-01-04 07:37:02 1.91     阿托伐         40    NA
+    ## # … with 3 more variables: name <chr>, sex <chr>, age <dbl>
 
 ## 导出
+
+最终，我们可以将数据导出并保存。
 
 ``` r
 #write.csv(out,"data/inclisiran/out20210316.csv")
 ```
+
+``` r
+sessionInfo()
+```
+
+    ## R version 3.6.2 (2019-12-12)
+    ## Platform: x86_64-redhat-linux-gnu (64-bit)
+    ## Running under: CentOS Linux 8 (Core)
+    ## 
+    ## Matrix products: default
+    ## BLAS/LAPACK: /usr/lib64/R/lib/libRblas.so
+    ## 
+    ## locale:
+    ##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+    ##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+    ##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+    ##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+    ##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+    ## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+    ## 
+    ## attached base packages:
+    ## [1] stats     graphics  grDevices utils     datasets  methods   base     
+    ## 
+    ## other attached packages:
+    ## [1] forcats_0.5.0   stringr_1.4.0   dplyr_0.8.5     purrr_0.3.3    
+    ## [5] readr_1.3.1     tidyr_1.0.2     tibble_2.1.3    ggplot2_3.3.0  
+    ## [9] tidyverse_1.3.0
+    ## 
+    ## loaded via a namespace (and not attached):
+    ##  [1] tidyselect_1.0.0 xfun_0.12        haven_2.2.0      lattice_0.20-38 
+    ##  [5] colorspace_1.4-1 vctrs_0.2.4      generics_0.0.2   htmltools_0.4.0 
+    ##  [9] yaml_2.2.1       utf8_1.1.4       rlang_0.4.6      pillar_1.4.3    
+    ## [13] glue_1.4.0       withr_2.1.2      DBI_1.1.0        dbplyr_1.4.2    
+    ## [17] modelr_0.1.6     readxl_1.3.1     lifecycle_0.2.0  munsell_0.5.0   
+    ## [21] gtable_0.3.0     cellranger_1.1.0 rvest_0.3.5      evaluate_0.14   
+    ## [25] knitr_1.28       fansi_0.4.1      broom_0.5.5      Rcpp_1.0.4.6    
+    ## [29] scales_1.1.0     backports_1.1.5  jsonlite_1.7.0   fs_1.3.2        
+    ## [33] hms_0.5.3        digest_0.6.25    stringi_1.4.6    grid_3.6.2      
+    ## [37] cli_2.0.2        tools_3.6.2      magrittr_1.5     crayon_1.3.4    
+    ## [41] pkgconfig_2.0.3  xml2_1.2.5       reprex_0.3.0     lubridate_1.7.4 
+    ## [45] assertthat_0.2.1 rmarkdown_2.1    httr_1.4.1       rstudioapi_0.11 
+    ## [49] R6_2.4.1         nlme_3.1-142     compiler_3.6.2
